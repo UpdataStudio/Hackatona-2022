@@ -1,0 +1,27 @@
+[
+  {
+    "label": "Facebook",
+    "src": "facebook",
+    "url": "#"
+  },
+  {
+    "label": "Flickr",
+    "src": "flickr",
+    "url": "#"
+  },
+  {
+    "label": "Instagram",
+    "src": "instagram",
+    "url": "#"
+  },
+  {
+    "label": "Twitter",
+    "src": "twitter",
+    "url": "#"
+  },
+  {
+    "label": "Youtube",
+    "src": "youtube",
+    "url": "#"
+  }
+]
