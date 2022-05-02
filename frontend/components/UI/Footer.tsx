@@ -9,8 +9,8 @@ import socials from '@/public/socialIcons/socials.json';
 
 export function Footer() {
     return (
-        <AppBar position="static" color="inherit">
-            <Container maxWidth="xl" sx={{ backgroundColor: '#165A96' }}>
+        <AppBar position="static" color="inherit" sx={{ backgroundColor: '#165A96', padding: 1 }}>
+            <Container maxWidth="xl" >
                 <Toolbar disableGutters>
                     <Logo white />
                     <Box sx={{ flexGrow: 1 }} />
@@ -27,7 +27,6 @@ export function Footer() {
                                         />
                                     </IconButton>
                                 )
-
                             })}
                         </Box>
                         <Typography variant="h5" sx={{
@@ -38,7 +37,7 @@ export function Footer() {
                             lineHeight: "20px",
                             color: '#ffffff'
                         }}>
-                            © 2022 Fiocruz. Todos os direitos reservados.
+                            © {new Date().getFullYear()} Fiocruz. Todos os direitos reservados.
                         </Typography>
                     </Box>
                 </Toolbar>

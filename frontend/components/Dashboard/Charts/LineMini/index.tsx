@@ -1,3 +1,4 @@
+import React from "react";
 import Image from "next/image";
 import { Box, Typography } from "@mui/material";
 import up from '@/public/lineChartMini/chartshortup.svg';
@@ -39,8 +40,8 @@ export function LineMini({ dados }) {
                 <Image
                     src={dados.porcentagem.charAt(0) == "+" ? up : down}
                     alt={dados.porcentagem.charAt(0) == "+" ? up : down}
-                    width="16px"
-                    height="16px"
+                    width="20px"
+                    height="20px"
                 />
                 <Typography variant="subtitle2" sx={{ 
                     marginLeft: "5px",

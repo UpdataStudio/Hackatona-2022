@@ -11,7 +11,7 @@ const Structure = ({ children, config: { namePage, page } }: any) => {
                 image={'/favicon.ico'} />
             <Header />
             <TabMenu selected={page}/>
-            <Container maxWidth="xl" sx={{ minHeight: "calc(100vh - 128px)", padding: 5 }} >
+            <Container maxWidth="xl" sx={{ minHeight: "calc(100vh - 128px)", padding: 5, paddingTop: 1 }} >
                 {children}
             </Container>
             <Footer />

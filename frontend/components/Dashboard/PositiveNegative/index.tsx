@@ -2,7 +2,8 @@ import { Box, Typography } from "@mui/material";
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import RemoveCircleOutlineIcon from '@mui/icons-material/RemoveCircleOutline';
 
-export function PositiveNegative () {
+export function PositiveNegative({ positivoNegativo }: any) {
+
     return (
         <>
             <Box sx={{
@@ -21,7 +22,7 @@ export function PositiveNegative () {
                     letterSpacing: '0.25px',
                     color: 'rgba(0, 0, 0, 0.6)',
                 }}>
-                    Positivos <AddCircleOutlineIcon sx={{ width: '15px', height: '15px' }} />
+                    {positivoNegativo.namePositivo} <AddCircleOutlineIcon sx={{ width: '15px', height: '15px' }} />
                 </Typography>
 
                 <Typography variant="body1" sx={{
@@ -32,7 +33,7 @@ export function PositiveNegative () {
                     lineHeight: '36px',
                     color: '#04B8AD',
                 }}>
-                    35%
+                    {positivoNegativo.valuePositivo}
                 </Typography>
             </Box>
             <Box sx={{
@@ -52,7 +53,7 @@ export function PositiveNegative () {
                     letterSpacing: '0.25px',
                     color: 'rgba(0, 0, 0, 0.6)',
                 }}>
-                    Negativos <RemoveCircleOutlineIcon sx={{ width: '15px', height: '15px' }} />
+                    {positivoNegativo.nameNegativo} <RemoveCircleOutlineIcon sx={{ width: '15px', height: '15px' }} />
                 </Typography>
 
                 <Typography variant="body1" sx={{
@@ -63,7 +64,7 @@ export function PositiveNegative () {
                     lineHeight: '36px',
                     color: '#F37070',
                 }}>
-                    65%
+                    {positivoNegativo.valueNegativo}
                 </Typography>
             </Box>
         </>

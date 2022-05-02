@@ -399,3 +399,5 @@ Temporary Items
 # Local
 .env
 dist
+sql/
+docker-compose.yml

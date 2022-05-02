@@ -5,6 +5,7 @@ const withTM = require('next-transpile-modules')([
 ]);
 
 module.exports = withTM({
+  basePath: '/cims-df',
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,

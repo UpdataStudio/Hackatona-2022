@@ -283,6 +283,10 @@ div[class*='BoxContainer__BoxContent'] {
   color: #fff;
 }
 
+.leaflet-popup-content-wrapper {
+  width: 460px;
+}
+
 #root__title {
   display: none !important;
 }

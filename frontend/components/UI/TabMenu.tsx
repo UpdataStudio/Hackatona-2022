@@ -19,7 +19,7 @@ export function TabMenu({ selected }: any) {
                     value={selected}
                     onChange={handleChange}
                 >
-                    <Tab value="home" label="Home" />
+                    <Tab value="home" label="Home" disabled/>
                     <Tab value="dashboard" label="Dashboard" />
                     <Tab value="about" label="Contato" disabled />
                     <Tab value="links" label="Links Úteis" disabled />

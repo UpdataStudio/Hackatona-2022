@@ -1,24 +1,21 @@
 import { Controller, Get, Query } from '@nestjs/common';
-import RequestFilters from 'src/types/RequestFilters';
+import { ApiTags } from '@nestjs/swagger';
+import RequestFilters from '../types/RequestFilters';
 import { CasosCovidService } from './casos-covid.service';
 
+@ApiTags('Casos Covid')
 @Controller('casos-covid')
 export class CasosCovidController {
   constructor(private readonly casosCovidService: CasosCovidService) {}
-
-  @Get()
-  findAll() {
-    return this.casosCovidService.findAll();
-  }
 
   @Get('/novos-casos')
   async findNovosCasos(@Query() params: RequestFilters) {
     return await this.casosCovidService.findNovosCasos(params);
   }
 
-  @Get('/novos-casos-por-mes')
-  async findNovosCasosPorMes(@Query() params: RequestFilters) {
-    return await this.casosCovidService.findNovosCasosPorMes(params);
+  @Get('/novos-casos-por-dia')
+  async findNovosCasosPorDia(@Query() params: RequestFilters) {
+    return await this.casosCovidService.findNovosCasosPorDia(params);
   }
 
   @Get('/total-casos')
@@ -26,9 +23,9 @@ export class CasosCovidController {
     return await this.casosCovidService.findTotalCasos(params);
   }
 
-  @Get('/total-casos-por-mes')
-  async findTotalCasosPorMes(@Query() params: RequestFilters) {
-    return await this.casosCovidService.findTotalCasosPorMes(params);
+  @Get('/total-casos-por-dia')
+  async findTotalCasosPorDia(@Query() params: RequestFilters) {
+    return await this.casosCovidService.findTotalCasosPorDia(params);
   }
 
   @Get('/total-casos-por-situacao')
@@ -76,16 +73,31 @@ export class CasosCovidController {
     return await this.casosCovidService.findConfirmadosComComorbidades(params);
   }
 
-  @Get('/confirmados-em-acompanhamento-por-mes')
-  async findCasosEmAcompanhamentoPorMes(@Query() params: RequestFilters) {
-    return await this.casosCovidService.findConfirmadosEmAcompanhamentoPorMes(
+  @Get('/confirmados-em-acompanhamento-por-dia')
+  async findCasosEmAcompanhamentoPorDia(@Query() params: RequestFilters) {
+    return await this.casosCovidService.findConfirmadosEmAcompanhamentoPorDia(
       params,
     );
   }
 
-  @Get('/confirmados-internados-por-mes')
-  async findCasosInternadosPorMes(@Query() params: RequestFilters) {
-    return await this.casosCovidService.findConfirmadosInternadosPorMes(params);
+  @Get('/confirmados-internados-por-dia')
+  async findCasosInternadosPorDia(@Query() params: RequestFilters) {
+    return await this.casosCovidService.findConfirmadosInternadosPorDia(params);
+  }
+
+  @Get('/dados-por-regiao')
+  async findDadosPorRegiao(@Query() params: RequestFilters) {
+    return await this.casosCovidService.findDadosPorRegiao(params);
+  }
+
+  @Get('/total-casos-por-dia-e-regiao')
+  findTotalCasosPorDiaERegiao(@Query() params: RequestFilters) {
+    return this.casosCovidService.findTotalCasosPorDiaERegiao(params);
+  }
+
+  @Get('/novos-casos-por-dia-e-regiao')
+  findNovosCasosPorDiaERegiao(@Query() params: RequestFilters) {
+    return this.casosCovidService.findNovosCasosPorDiaERegiao(params);
   }
 
   @Get('/filters')

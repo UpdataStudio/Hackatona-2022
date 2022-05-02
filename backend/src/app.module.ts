@@ -8,6 +8,8 @@ import { CasosCovidModule } from './casos-covid/casos-covid.module';
 import { TestagemModule } from './testagem/testagem.module';
 import { VacinasModule } from './vacinas/vacinas.module';
 import { ObitoModule } from './obito/obito.module';
+import { FilterModule } from './filter/filter.module';
+import { RangesMapaModule } from './ranges-mapa/ranges-mapa.module';
 import databaseConfig from './config/database';
 @Module({
   imports: [
@@ -17,7 +19,9 @@ import databaseConfig from './config/database';
     CasosCovidModule,
     TestagemModule,
     VacinasModule,
-    ObitoModule
+    ObitoModule,
+    FilterModule,
+    RangesMapaModule
   ],
   controllers: [AppController],
   providers: [AppService],

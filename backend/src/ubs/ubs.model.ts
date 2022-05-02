@@ -31,4 +31,10 @@ export class Ubs extends Model {
 
   @Column
   ds_regiao_administrativa: string; 
+
+  @Column
+  co_lat: number;
+
+  @Column
+  co_lon: number;
 }

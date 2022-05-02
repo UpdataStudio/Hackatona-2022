@@ -1,3 +1,4 @@
+// eslint-disable-next-line import/no-anonymous-default-export
 export default {
     "type": "FeatureCollection",
     "name": "Ride_Todos_simp1",

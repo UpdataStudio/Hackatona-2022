@@ -8,11 +8,13 @@ import {
   Delete,
   Query,
 } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import RequestFilter from '../types/RequestFilters';
 import { CreateObitoDto } from './dto/create-obito.dto';
-import { FindFilter } from './dto/filter-obito.dto';
 import { UpdateObitoDto } from './dto/update-obito.dto';
 import { ObitoService } from './obito.service';
 
+@ApiTags('Óbitos')
 @Controller('obito')
 export class ObitoController {
   constructor(private readonly obitoService: ObitoService) {}
@@ -23,8 +25,8 @@ export class ObitoController {
   }
 
   @Get()
-  findAll(@Body() param: FindFilter) {
-    return this.obitoService.findAll(param);
+  findAll(@Query() param: RequestFilter) {
+    return this.obitoService.findQtTxObitos(param);
   }
 
   @Patch(':id')
@@ -35,5 +37,20 @@ export class ObitoController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.obitoService.remove(+id);
+  }
+
+  @Get('/dados-por-regiao')
+  findDadosPorRegiao(@Query() params: RequestFilter) {
+    return this.obitoService.findDadosPorRegiao(params);
+  }
+
+  @Get('/novos-obitos-por-dia')
+  findNovosObitosPorDia(@Query() params: RequestFilter) {
+    return this.obitoService.findNovosObitosPorDia(params);
+  }
+
+  @Get('/total-obitos-por-dia')
+  findTotalObitosPorDia(@Query() params: RequestFilter) {
+    return this.obitoService.findTotalObitosPorDia(params);
   }
 }

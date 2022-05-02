@@ -1,17 +1,13 @@
-import { fn, col, literal, Op } from 'sequelize';
-import RequestFilter from 'src/types/RequestFilters';
+import { Op } from 'sequelize';
+import RequestFilter from '../types/RequestFilters';
+import VacinaFilters from '../types/VacinaFilters';
 
-export const nativeWhere = (params: RequestFilter, alias: string) => {
+export const nativeWhere = (params: RequestFilter & VacinaFilters, alias?: string) => {
   const entityAlias = alias ? `${alias}.` : '';
   let where = ' WHERE 1=1';
 
   if (params.inicio && params.fim) {
-    const [anoInicio, mesInicio] = params.inicio.split('-');
-    const [anoFim, mesFim] = params.inicio.split('-');
-    const inicio = `${anoInicio}-${mesInicio}`;
-    const fim = `${anoFim}-${mesFim}`;
-
-    where += ` AND ${entityAlias}ds_mes BETWEEN '${inicio}' AND '${fim}'`;
+    where += ` AND ${entityAlias}ds_mes BETWEEN '${params.inicio}' AND '${params.fim}'`;
   }
   if (params.bairro) {
     where += ` AND ${entityAlias}nm_estabelecimento like '%${params.bairro}%'`;
@@ -22,6 +18,15 @@ export const nativeWhere = (params: RequestFilter, alias: string) => {
   if (params.regiao_administrativa) {
     where += ` AND ${entityAlias}ds_regiao_administrativa = '${params.regiao_administrativa}'`;
   }
+  if (params.regiao_saude) {
+    where += ` AND ${entityAlias}ds_regiao = '${params.regiao_saude}'`;
+  }
+  if (params.acima_12_anos) {
+    where += ` AND ${entityAlias}ds_acima_12_anos = '${params.acima_12_anos}'`;
+  }
+  if (params.fabricante) {
+    where += ` AND ${entityAlias}ds_fabricante = '${params.fabricante}'`;
+  }
 
   return where;
 };
@@ -30,14 +35,9 @@ export const sequelizeWhere = (params: RequestFilter) => {
   let where = {};
 
   if (params.inicio && params.fim) {
-    const [anoInicio, mesInicio] = params.inicio.split('-');
-    const [anoFim, mesFim] = params.inicio.split('-');
-    const inicio = `${anoInicio}-${mesInicio}`;
-    const fim = `${anoFim}-${mesFim}`;
-
     where = {
       ds_mes: { 
-        [Op.between]: [inicio, fim]
+        [Op.between]: [params.inicio, params.fim]
       },
     };
   }
@@ -55,6 +55,9 @@ export const sequelizeWhere = (params: RequestFilter) => {
       ...where,
       ds_regiao_administrativa: params.regiao_administrativa,
     };
+  }
+  if (params.regiao_saude) {
+    where = { ...where, ds_regiao: params.regiao_saude };
   }
 
   return where;

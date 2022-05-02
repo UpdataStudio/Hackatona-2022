@@ -1,0 +1,21 @@
+image: ubuntu:latest
+stages:
+  - deploy
+
+deploy:
+  stage: deploy
+  before_script:
+    - echo "Projeto -> ${CI_PROJECT_NAME}"
+    - echo "Branch -> ${CI_COMMIT_REF_NAME}"
+    - 'command -v ssh-agent >/dev/null || ( apt-get update -y && apt-get install openssh-client -y )'
+    - eval $(ssh-agent -s)
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+
+  script:
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - ssh -o StrictHostKeyChecking=no ${SSH_USER}@${SSH_HOST} -p ${SSH_PORT} "cd ${WORK_DIR}; git pull; yarn build; pm2 restart 3041-hackathona-front"
+  only:
+    - main
+  except:
+    - dev

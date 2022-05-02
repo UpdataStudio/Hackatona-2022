@@ -10,7 +10,9 @@ import {
 import { UbsService } from './ubs.service';
 import { CreateUbsDto } from './dto/create-ubs.dto';
 import { UpdateUbsDto } from './dto/update-ubs.dto';
+import { ApiTags } from '@nestjs/swagger';
 
+@ApiTags('UBS')
 @Controller('ubs')
 export class UbsController {
   constructor(private readonly ubsService: UbsService) {}

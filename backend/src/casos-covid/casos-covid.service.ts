@@ -1,13 +1,15 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { fn, col, literal, Op, QueryTypes } from 'sequelize';
-import RequestFilters from 'src/types/RequestFilters';
+import RequestFilters from '../types/RequestFilters';
 import { CasosCovid } from './casos-covid.model';
 import { CreateCasosCovidDto } from './dto/create-casos-covid.dto';
 import { UpdateCasosCovidDto } from './dto/update-casos-covid.dto';
-import { decrementaMes } from '../utils/date';
+import { preparaParametrosMes } from '../utils/date';
 import * as NativeQueries from '../utils/native-queries';
 import { sequelizeWhere } from '../utils/where-builder';
+import { Ubs } from '../ubs/ubs.model';
+import { groupByRegiao } from './mapper/DadosCasosPorRegiao';
 
 const modelFields: string[] = [
   'pk_ubs_cnes',
@@ -34,6 +36,8 @@ export class CasosCovidService {
   constructor(
     @InjectModel(CasosCovid)
     private readonly model: typeof CasosCovid,
+    @InjectModel(Ubs)
+    private readonly ubsModel: typeof Ubs,
   ) {}
 
   async create(createCasosCovidDto: CreateCasosCovidDto) {
@@ -45,26 +49,21 @@ export class CasosCovidService {
   }
 
   async findNovosCasos(params: RequestFilters = {}) {
-    const { mesRecente, mesAnterior } = await this._preparaFiltroMes(params);
+    const { periodo } = await preparaParametrosMes(params, this.model);
 
-    return this.model.findAll({
-      where: sequelizeWhere({ ...params, inicio: mesRecente, fim: mesRecente }),
+    return this.model.findOne({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
       attributes: {
         exclude: modelFields,
         include: [
-          [fn('coalesce', fn('sum', col('qt_novos_casos')), 0), 'novos_casos'],
+          [fn('coalesce', fn('sum', col('qt_novos_casos')), 0), 'valor'],
           [
             literal(
-              NativeQueries.NOVOS_CASOS({ ...params, inicio: mesAnterior, fim: mesAnterior }),
-            ),
-            'casos_mes_anterior',
-          ],
-          [
-            literal(
-              NativeQueries.VARIACAO_NOVOS_CASOS({
-                ...params,
-                mes_anterior: mesAnterior,
-                mes_atual: mesRecente,
+              NativeQueries.VARIACAO({
+                tableName: 'vw_casos_covid',
+                columName: 'qt_novos_casos',
+                mes_anterior: periodo.anterior,
+                mes_atual: periodo.atual,
               }),
             ),
             'percentual_variacao',
@@ -74,38 +73,36 @@ export class CasosCovidService {
     });
   }
 
-  async findNovosCasosPorMes(params: RequestFilters) {
+  async findNovosCasosPorDia(params: RequestFilters) {
     return this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
+        ['ds_mes', 'data'],
         [
           fn('coalesce', fn('sum', col('qt_novos_casos')), 0),
-          'quantidade_novos_casos',
+          'valor',
         ],
-        'ds_mes',
       ],
       group: 'ds_mes',
     });
   }
 
   async findTotalCasos(params: RequestFilters) {
-    const { mesRecente, mesAnterior } = await this._preparaFiltroMes(params);
+    const { periodo } = await preparaParametrosMes(params, this.model);
 
-    return this.model.findAll({
-      where: sequelizeWhere({ ...params, inicio: mesRecente, fim: mesRecente }),
+    return this.model.findOne({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
       attributes: {
         exclude: modelFields,
         include: [
-          [fn('sum', col('qt_total_casos')), 'total_casos'],
-          [
-            literal(NativeQueries.TOTAL_CASOS({ ds_mes: mesRecente })),
-            'casos_mes_anterior',
-          ],
+          [fn('sum', col('qt_total_casos')), 'valor'],
           [
             literal(
-              NativeQueries.VARIACAO_TOTAL_CASOS({
-                mes_anterior: mesAnterior,
-                mes_atual: mesRecente,
+              NativeQueries.VARIACAO({
+                tableName: 'vw_casos_covid',
+                columName: 'qt_total_casos',
+                mes_anterior: periodo.anterior,
+                mes_atual: periodo.atual,
               }),
             ),
             'percentual_variacao',
@@ -115,15 +112,15 @@ export class CasosCovidService {
     });
   }
 
-  async findTotalCasosPorMes(params: RequestFilters) {
+  async findTotalCasosPorDia(params: RequestFilters) {
     return this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
+        ['ds_mes', 'data'],
         [
           fn('coalesce', fn('sum', col('qt_total_casos')), 0),
-          'quantidade_total_casos',
+          'valor',
         ],
-        'ds_mes',
       ],
       group: 'ds_mes',
     });
@@ -135,7 +132,11 @@ export class CasosCovidService {
       attributes: [
         [
           fn('coalesce', fn('sum', col('qt_total_casos')), 0),
-          'quantidade_total_casos',
+          'valor',
+        ],
+        [
+          literal(NativeQueries.PERCENTUAL_SITUACAO_PACIENTE(params)),
+          'percentual',
         ],
         ['ds_casos', 'situacao'],
       ],
@@ -144,41 +145,46 @@ export class CasosCovidService {
   }
 
   async findPacientesPorSintomas(params: RequestFilters) {
-    const { mesRecente, mesAnterior } = await this._preparaFiltroMes(params);
+    const { periodo } = await preparaParametrosMes(params, this.model);
 
-    return this.model.findAll({
-      where: sequelizeWhere({ ...params, inicio: mesRecente, fim: mesRecente }),
+    return this.model.findOne({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
       attributes: {
         exclude: modelFields,
         include: [
-          [fn('avg', col('tx_sintomas_leves')), 'media_sintomas_leves'],
-          [fn('avg', col('tx_sintomas_graves')), 'media_sintomas_graves'],
-          [fn('avg', col('tx_assintomaticos')), 'media_assintomaticos'],
+          [literal('(avg(tx_sintomas_leves) * 100)'), 'media_sintomas_leves'],
+          [literal('(avg(tx_sintomas_graves) * 100)'), 'media_sintomas_graves'],
+          [literal('(avg(tx_assintomaticos) * 100)'), 'media_assintomaticos'],
           [
             literal(
-              NativeQueries.VARIACAO_CASOS_SINTOMAS_LEVES({
-                mes_anterior: mesAnterior,
-                mes_atual: mesRecente,
+              NativeQueries.VARIACAO({
+                tableName: 'vw_casos_covid',
+                columName: 'tx_sintomas_leves',
+                operator: 'avg',
+                mes_anterior: periodo.anterior,
+                mes_atual: periodo.atual,
               }),
             ),
             'variacao_sintomas_leves',
           ],
           [
-            literal(
-              NativeQueries.VARIACAO_CASOS_SINTOMAS_GRAVES({
-                mes_anterior: mesAnterior,
-                mes_atual: mesRecente,
-              }),
-            ),
+            NativeQueries.VARIACAO({
+              tableName: 'vw_casos_covid',
+              columName: 'tx_sintomas_graves',
+              operator: 'avg',
+              mes_anterior: periodo.anterior,
+              mes_atual: periodo.atual,
+            }),
             'variacao_sintomas_graves',
           ],
           [
-            literal(
-              NativeQueries.VARIACAO_CASOS_ASSINTOMATICOS({
-                mes_anterior: mesAnterior,
-                mes_atual: mesRecente,
-              }),
-            ),
+            NativeQueries.VARIACAO({
+              tableName: 'vw_casos_covid',
+              columName: 'tx_assintomaticos',
+              operator: 'avg',
+              mes_anterior: periodo.anterior,
+              mes_atual: periodo.atual,
+            }),
             'variacao_assintomaticos',
           ],
         ],
@@ -190,8 +196,8 @@ export class CasosCovidService {
     return this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
-        [fn('avg', col('tx_homens')), 'percentual_homens'],
-        [fn('avg', col('tx_mulheres')), 'percentual_mulheres'],
+        [literal('avg(tx_homens) * 100'), 'percentual_homens'],
+        [literal('avg(tx_mulheres) * 100'), 'percentual_mulheres'],
         [fn('sum', col('tx_homens')), 'total_homens'], //TODO Adicionar uma coluna para quantidade (Rafael)
         [fn('sum', col('tx_mulheres')), 'total_mulheres'], //TODO Adicionar uma coluna para quantidade (Rafael)
       ],
@@ -210,23 +216,21 @@ export class CasosCovidService {
   }
 
   async findConfirmadosEmAcompanhamento(params: RequestFilters) {
-    const { mesRecente, mesAnterior } = await this._preparaFiltroMes(params);
-    return this.model.findAll({
-      where: sequelizeWhere({ ...params, inicio: mesRecente, fim: mesRecente }),
+    const { periodo } = await preparaParametrosMes(params, this.model);
+    return this.model.findOne({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
       attributes: [
         [
           literal(
-            NativeQueries.CONFIRMADOS_EM_ACOMPANHAMENTO({
-              inicio: mesRecente, fim: mesRecente,
-            }),
+            NativeQueries.CONFIRMADOS_EM_ACOMPANHAMENTO({...periodo.atual}),
           ),
           'media_em_acompanhamento',
         ],
         [
           literal(
             NativeQueries.VARIACAO_CONFIRMADOS_EM_ACOMPANHAMENTO({
-              mes_atual: mesRecente,
-              mes_anterior: mesAnterior,
+              mes_atual: periodo.atual,
+              mes_anterior: periodo.anterior,
             }),
           ),
           'variacao',
@@ -236,16 +240,15 @@ export class CasosCovidService {
   }
 
   async findConfirmadosInternados(params: RequestFilters) {
-    const { mesRecente, mesAnterior } = await this._preparaFiltroMes(params);
+    const { periodo } = await preparaParametrosMes(params, this.model);
 
-    return this.model.findAll({
-      where: sequelizeWhere({ ...params, inicio: mesRecente, fim: mesRecente }),
+    return this.model.findOne({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
       attributes: [
         [
           literal(
             NativeQueries.CONFIRMADOS_INTERNADOS({
-              inicio: mesRecente,
-              fim: mesRecente,
+              ...periodo.atual
             }),
           ),
           'media_internados',
@@ -253,8 +256,8 @@ export class CasosCovidService {
         [
           literal(
             NativeQueries.VARIACAO_CONFIRMADOS_INTERNADOS({
-              mes_atual: mesRecente,
-              mes_anterior: mesAnterior,
+              mes_atual: periodo.atual,
+              mes_anterior: periodo.anterior,
             }),
           ),
           'variacao',
@@ -264,37 +267,72 @@ export class CasosCovidService {
   }
 
   async findVacinacao(params: RequestFilters) {
-    return this.model.findAll({
+    const data = await this.model.findAll({
       where: { ...sequelizeWhere(params), ds_vacinados: 'Sim' },
       attributes: [
-        [
-          fn('avg', col('tx_vacinados_em_acompanhamento')),
-          'vacinados_em_acompanhamento',
-        ],
-        [fn('avg', col('tx_vacinados_internados')), 'vacinados_internados'],
-        [fn('avg', col('tx_vacinados_confirmados')), 'vacinados_confirmados'],
+        [literal('avg(tx_vacinados_em_acompanhamento) * 100'), 'vacinados_em_acompanhamento'],
+        [literal('avg(tx_vacinados_internados) * 100'), 'vacinados_internados'],
+        [literal('avg(tx_vacinados_confirmados) * 100'), 'vacinados_confirmados'],
       ],
     });
+    const mappingLabels = {
+      'vacinados_em_acompanhamento': 'Em acompanhamento Vacinados',
+      'vacinados_internados': 'Internados Vacinados',
+      'vacinados_confirmados': 'Confirmados Vacinados',
+    };
+    const keys = [
+      'vacinados_em_acompanhamento',
+      'vacinados_internados',
+      'vacinados_confirmados'
+    ];
+    
+    return data.reduce((prev, current) => {
+      const items = keys.map(key => ({
+        label: mappingLabels[key],
+        porcentagem: current.toJSON()[key]
+      }));
+
+      return [...prev, ...items];
+    }, []);
   }
 
   async findMediasComorbidades(params: RequestFilters) {
-    return this.model.findAll({
+    const data = await this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
         [
-          fn('avg', col('tx_comorbidades_em_acompanhamento')),
+          literal('avg(tx_comorbidades_em_acompanhamento) * 100'),
           'comorbidades_em_acompanhamento',
         ],
         [
-          fn('avg', col('tx_comorbidades_internados')),
+          literal('avg(tx_comorbidades_internados) * 100'),
           'comorbidades_internados',
         ],
         [
-          fn('avg', col('tx_comorbidades_confirmados')),
+          literal('avg(tx_comorbidades_confirmados) * 100'),
           'comorbidades_confirmados',
         ],
       ],
     });
+    const mappingLabels = {
+      'comorbidades_em_acompanhamento': 'Em acompanhamento com Comorbidades',
+      'comorbidades_internados': 'Internados com Comorbidades',
+      'comorbidades_confirmados': 'Confirmados com Comorbidades',
+    };
+    const keys = [
+      'comorbidades_em_acompanhamento',
+      'comorbidades_internados',
+      'comorbidades_confirmados'
+    ];
+    
+    return data.reduce((prev, current) => {
+      const items = keys.map(key => ({
+        label: mappingLabels[key],
+        porcentagem: current.toJSON()[key]
+      }));
+
+      return [...prev, ...items];
+    }, []);
   }
 
   async findConfirmadosComComorbidades(params: RequestFilters) {
@@ -304,41 +342,114 @@ export class CasosCovidService {
         ds_comorbidades: { [Op.not]: null },
       },
       attributes: [
-        [fn('avg', col('tx_comorbidades_confirmados')), 'percentual'],
+        [literal('avg(tx_comorbidades_confirmados) * 100'), 'percentual'],
         ['ds_comorbidades', 'comorbidade'],
       ],
       group: 'ds_comorbidades',
     });
   }
 
-  async findConfirmadosEmAcompanhamentoPorMes(params: RequestFilters) {
+  async findConfirmadosEmAcompanhamentoPorDia(params: RequestFilters) {
     return this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
         [
-          literal(
-            NativeQueries.CONFIRMADOS_EM_ACOMPANHAMENTO(),
-          ),
+          literal('(avg(tx_comorbidades_em_acompanhamento) + avg(tx_vacinados_em_acompanhamento)) * 100'),
           'media_em_acompanhamento',
         ],
-        ['ds_mes', 'mes'],
+        ['ds_mes', 'data'],
       ],
       group: 'ds_mes',
     });
   }
 
-  async findConfirmadosInternadosPorMes(params: RequestFilters) {
+  async findConfirmadosInternadosPorDia(params: RequestFilters) {
     return this.model.findAll({
       where: sequelizeWhere(params),
       attributes: [
         [
-          literal(NativeQueries.CONFIRMADOS_INTERNADOS()),
+          literal('(avg(tx_comorbidades_internados) + avg(tx_vacinados_internados)) * 100'),
           'media_internados',
         ],
-        ['ds_mes', 'mes'],
+        ['ds_mes', 'data'],
       ],
       group: 'ds_mes',
     });
+  }
+
+  async findDadosPorRegiao(params: RequestFilters = {}) {
+    const { periodo } = await preparaParametrosMes(params, this.model);
+
+    const data = await this.model.findAll({
+      where: sequelizeWhere({ ...params, ...periodo.atual }),
+      attributes: {
+        exclude: modelFields,
+        include: [
+          ['ds_regiao', 'regiao'],
+          [fn('coalesce', fn('sum', col('qt_novos_casos')), 0), 'novos_casos'],
+          [fn('coalesce', fn('sum', col('qt_total_casos')), 0), 'total_casos'],
+          [
+            literal(
+              NativeQueries.VARIACAO({
+                tableName: 'vw_casos_covid',
+                columName: 'qt_novos_casos',
+                mes_anterior: periodo.anterior,
+                mes_atual: periodo.atual,
+              }),
+            ),
+            'variacao_novos_casos',
+          ],
+          [
+            literal(
+              NativeQueries.VARIACAO({
+                tableName: 'vw_casos_covid',
+                columName: 'qt_total_casos',
+                mes_anterior: periodo.anterior,
+                mes_atual: periodo.atual,
+              }),
+            ),
+            'variacao_total_casos',
+          ],
+        ],
+      },
+      group: 'ds_regiao'
+    });
+
+    return groupByRegiao({ data, ubsModel: this.ubsModel });
+  }
+
+  async findTotalCasosPorDiaERegiao(params: RequestFilters) {
+    const data = await this.model.findAll({
+      where: sequelizeWhere(params),
+      attributes: [
+        [
+          fn('coalesce', fn('sum', col('qt_total_casos')), 0),
+          'valor',
+        ],
+        ['ds_mes', 'data'],
+        ['ds_regiao', 'regiao'],
+      ],
+      group: ['ds_mes', 'ds_regiao'],
+    });
+    
+    return groupByRegiao({ data, ubsModel: this.ubsModel });
+  }
+
+  async findNovosCasosPorDiaERegiao(params: RequestFilters) {
+    const data = await this.model.findAll({
+      where: sequelizeWhere(params),
+      attributes: [
+        [
+          fn('coalesce', fn('sum', col('qt_novos_casos')), 0),
+          'valor',
+        ],
+        ['ds_mes', 'data'],
+        ['ds_regiao', 'regiao'],
+      ],
+      group: ['ds_mes', 'ds_regiao'],
+    });
+    
+    return groupByRegiao({ data, ubsModel: this.ubsModel });
   }
 
   async findOne(id: number) {
@@ -354,16 +465,6 @@ export class CasosCovidService {
 
   remove(id: number) {
     this.model.destroy({ where: { id } });
-  }
-
-  async _preparaFiltroMes(params) {
-    let mesRecente = params.inicio;
-    if (!mesRecente) {
-      mesRecente = await this.model.max('ds_mes');
-    }
-    const mesAnterior = params.fim || decrementaMes(mesRecente);
-
-    return { mesRecente, mesAnterior };
   }
 
   async filters() {
